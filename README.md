@@ -1,355 +1,127 @@
 # chrome-manifest-builder
 
-> Programmatic manifest.json builder for Chrome extensions with TypeScript support, fluent API, and validation.
+Programmatic manifest.json builder for Chrome extensions. Typed fluent API for Manifest V3 with built-in validation. Zero runtime dependencies.
 
-[![npm version](https://img.shields.io/npm/v/chrome-manifest-builder)](https://npmjs.com/package/chrome-manifest-builder)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
-
-**chrome-manifest-builder** provides a fluent TypeScript API for generating Chrome Extension Manifest V3 (`manifest.json`) files programmatically. Say goodbye to manually writing JSON and hello to type-safe, validated manifest generation.
-
-## Why Use chrome-manifest-builder?
-
-- **Type-safe** — Full TypeScript support with autocomplete for all manifest fields
-- **Fluent API** — Chain methods for readable, declarative manifest configuration
-- **Validation** — Built-in validation ensures your manifest meets Chrome Web Store requirements
-- **Zero dependencies** — Lightweight, no external runtime dependencies
-- **Manifest V3** — Built for modern Chrome extensions
-
-## Installation
+INSTALL
 
 ```bash
 npm install chrome-manifest-builder
 ```
 
-Or with yarn:
-
-```bash
-yarn add chrome-manifest-builder
-```
-
-## Quick Start
+QUICK START
 
 ```typescript
-import { ManifestBuilder } from 'chrome-manifest-builder';
+import { ManifestBuilder } from "chrome-manifest-builder";
 
 const manifest = new ManifestBuilder()
-  .name('My Extension')
-  .version('1.0.0')
-  .description('A Chrome extension built with manifest-builder')
-  .permissions('storage', 'tabs')
-  .hostPermissions('https://*/*')
-  .background('background.js')
-  .action('popup.html', { '16': 'icon16.png', '128': 'icon128.png' })
-  .icons({
-    '16': 'icon16.png',
-    '48': 'icon48.png',
-    '128': 'icon128.png'
-  })
+  .name("My Extension")
+  .version("1.0.0")
+  .description("A Chrome extension built with chrome-manifest-builder")
+  .permissions("storage", "tabs")
+  .hostPermissions("https://*/*")
+  .background("service-worker.js", "module")
+  .contentScript(
+    ["https://*/*"],
+    ["content.js"],
+    ["content.css"],
+    "document_idle"
+  )
+  .action("popup.html", { "16": "icon16.png", "128": "icon128.png" })
+  .icons({ "16": "icon16.png", "48": "icon48.png", "128": "icon128.png" })
+  .optionsPage("options.html")
   .build();
 
-// Output as JSON
 console.log(JSON.stringify(manifest, null, 2));
 ```
 
-This generates:
+The builder always sets manifest_version to 3. Every setter returns this, so calls chain naturally.
 
-```json
-{
-  "manifest_version": 3,
-  "name": "My Extension",
-  "version": "1.0.0",
-  "description": "A Chrome extension built with manifest-builder",
-  "permissions": [
-    "storage",
-    "tabs"
-  ],
-  "host_permissions": [
-    "https://*/*"
-  ],
-  "background": {
-    "service_worker": "background.js"
-  },
-  "action": {
-    "default_popup": "popup.html",
-    "default_icon": {
-      "16": "icon16.png",
-      "128": "icon128.png"
-    }
-  },
-  "icons": {
-    "16": "icon16.png",
-    "48": "icon48.png",
-    "128": "icon128.png"
-  }
-}
-```
+API REFERENCE
 
-## API Reference
+ManifestBuilder is the only export. Construct it with new ManifestBuilder() and chain any of the following methods.
 
-### Constructor
+Core fields
 
-```typescript
-new ManifestBuilder()
-```
+- name(name: string) sets the extension name
+- version(version: string) sets the version string
+- description(desc: string) sets the extension description
 
-Creates a new ManifestBuilder instance. Automatically sets `manifest_version: 3`.
+Permissions
 
-### Core Fields
+- permissions(...perms: string[]) appends API permissions like storage, tabs, scripting. Can be called multiple times and values accumulate.
+- hostPermissions(...hosts: string[]) appends host match patterns. Accumulates across calls.
 
-| Method | Description |
-|--------|-------------|
-| `name(name: string)` | Sets the extension name (required) |
-| `version(version: string)` | Sets the semantic version (required) |
-| `description(desc: string)` | Sets the extension description |
+Background
 
-### Permissions
+- background(serviceWorker: string, type?: string) sets the background service worker path. Pass "module" as the second argument for ES module workers.
 
-| Method | Description |
-|--------|-------------|
-| `permissions(...perms: string[])` | Adds API permissions (storage, tabs, etc.) |
-| `hostPermissions(...hosts: string[])` | Adds host permissions (URLs/patterns) |
+Content scripts
 
-```typescript
-// Add multiple permissions at once
-.permissions('storage', 'tabs', 'scripting')
+- contentScript(matches: string[], js?: string[], css?: string[], runAt?: string) adds one content script entry. Call multiple times for multiple content scripts. Each call appends to the content_scripts array.
 
-// Add host permissions
-.hostPermissions('https://example.com/*', 'https://api.example.com/*')
-```
+Action
 
-### Background Script
+- action(popup?: string, icon?: Record<string, string>) configures the toolbar action with an optional popup HTML path and optional icon map.
 
-| Method | Description |
-|--------|-------------|
-| `background(serviceWorker: string, type?: string)` | Sets the background service worker |
+Icons
 
-```typescript
-.background('background.js')  // Basic
-.background('background.js', 'module')  // As ES module
-```
+- icons(icons: Record<string, string>) sets the extension icon map keyed by pixel size.
 
-### Content Scripts
+Options
 
-| Method | Description |
-|--------|-------------|
-| `contentScript(matches: string[], js?: string[], css?: string[], runAt?: string)` | Adds a content script configuration |
+- optionsPage(page: string) sets the options page HTML path.
 
-```typescript
-.contentScript(
-  ['https://*/*'],           // Match patterns
-  ['content.js'],            // JS files
-  ['styles.css'],            // CSS files
-  'document_idle'           // Run timing
-)
-```
+Commands
 
-### Browser Action
-
-| Method | Description |
-|--------|-------------|
-| `action(popup?: string, icon?: Record<string, string>)` | Configures the browser action/popup |
-
-```typescript
-.action('popup.html')  // Just popup
-.action('popup.html', { '16': 'icon16.png', '128': 'icon128.png' })  // With icons
-```
-
-### Icons
-
-| Method | Description |
-|--------|-------------|
-| `icons(icons: Record<string, string>)` | Sets the extension icons |
-
-```typescript
-.icons({
-  '16': 'images/icon16.png',
-  '48': 'images/icon48.png',
-  '128': 'images/icon128.png'
-})
-```
-
-### Options Page
-
-| Method | Description |
-|--------|-------------|
-| `optionsPage(page: string)` | Sets the options page URL |
-
-```typescript
-.optionsPage('options.html')
-```
-
-### Commands (Keyboard Shortcuts)
-
-| Method | Description |
-|--------|-------------|
-| `commands(cmds: Record<string, CommandConfig>)` | Defines keyboard shortcuts |
+- commands(cmds: Record<string, { description: string; suggested_key?: Record<string, string> }>) defines keyboard shortcuts.
 
 ```typescript
 .commands({
-  'open-popup': {
-    description: 'Open the extension popup',
-    suggested_key: { default: 'Ctrl+Shift+P', mac: 'Command+Shift+P' }
+  "toggle-feature": {
+    description: "Toggle the main feature",
+    suggested_key: { default: "Ctrl+Shift+F", mac: "Command+Shift+F" }
   }
 })
 ```
 
-### Web Accessible Resources
+Web accessible resources
 
-| Method | Description |
-|--------|-------------|
-| `webAccessibleResources(resources: string[], matches: string[])` | Makes resources accessible to web pages |
+- webAccessibleResources(resources: string[], matches: string[]) adds a web_accessible_resources entry. Accumulates across calls.
 
-```typescript
-.webAccessibleResources(
-  ['images/*.png', 'fonts/*.woff2'],
-  ['https://example.com/*']
-)
-```
+Escape hatch
 
-### Custom Fields
-
-| Method | Description |
-|--------|-------------|
-| `set(key: string, value: any)` | Sets any custom manifest field |
+- set(key: string, value: any) writes any arbitrary key into the manifest object. Useful for fields not covered by the typed API.
 
 ```typescript
-.set('oauth2', {
-  client_id: 'your-client-id.apps.googleusercontent.com',
-  scopes: ['https://www.googleapis.com/auth/drive']
+.set("oauth2", {
+  client_id: "your-client-id.apps.googleusercontent.com",
+  scopes: ["https://www.googleapis.com/auth/drive"]
 })
 ```
 
-### Build & Output
+Validation and output
 
-| Method | Description |
-|--------|-------------|
-| `build()` | Returns the manifest object |
-| `toJSON(indent?: number)` | Returns the manifest as a JSON string |
-| `validate()` | Returns an array of validation errors |
+- validate() returns a string array of validation errors. Checks for required fields (name, version, manifest_version) and confirms manifest_version is 3. An empty array means the manifest is valid.
+- build() returns a deep-cloned plain object of the manifest.
+- toJSON(indent?: number) returns the manifest serialized as a JSON string. Defaults to 2-space indentation.
 
 ```typescript
-// Get as object
-const manifest = builder.build();
-
-// Get as formatted JSON string
-const json = builder.toJSON(4);
-
-// Validate before building
 const errors = builder.validate();
 if (errors.length > 0) {
-  console.error('Validation failed:', errors);
-}
-```
-
-## Validation
-
-The builder includes built-in validation that checks for:
-
-- Required fields: `name`, `version`, `manifest_version`
-- Valid manifest version (must be 3)
-
-```typescript
-const builder = new ManifestBuilder()
-  .name('My Extension')
-  .version('1.0.0');
-
-const errors = builder.validate();
-// Returns: ['Missing required field: manifest_version']
-
-// Valid manifest
-const valid = new ManifestBuilder()
-  .name('My Extension')
-  .version('1.0.0');
-
-valid.validate(); // Returns: []
-```
-
-## Complete Example
-
-Here's a full example demonstrating a typical Chrome extension setup:
-
-```typescript
-import { ManifestBuilder } from 'chrome-manifest-builder';
-import * as fs from 'fs';
-
-const manifest = new ManifestBuilder()
-  .name('My Awesome Extension')
-  .version('1.0.0')
-  .description('Does amazing things')
-  
-  // Permissions
-  .permissions('storage', 'tabs', 'scripting')
-  .hostPermissions('https://*.google.com/*')
-  
-  // Background
-  .background('background.js', 'module')
-  
-  // Content scripts
-  .contentScript(
-    ['https://*/*'],
-    ['content.js'],
-    ['content.css'],
-    'document_idle'
-  )
-  
-  // Action
-  .action('popup.html', { '16': 'icon16.png', '128': 'icon128.png' })
-  
-  // Icons
-  .icons({
-    '16': 'icon16.png',
-    '48': 'icon48.png',
-    '128': 'icon128.png'
-  })
-  
-  // Options page
-  .optionsPage('options.html')
-  
-  // Keyboard commands
-  .commands({
-    'toggle-feature': {
-      description: 'Toggle the main feature',
-      suggested_key: { default: 'Ctrl+Shift+F' }
-    }
-  })
-  
-  // Web accessible resources
-  .webAccessibleResources(
-    ['images/*', 'fonts/*'],
-    ['https://*/*']
-  })
-  
-  // Validate
-  .validate();
-
-if (manifest.validate().length > 0) {
-  console.error('Invalid manifest:', manifest.validate());
+  console.error(errors);
   process.exit(1);
 }
 
-// Write to file
-fs.writeFileSync('manifest.json', manifest.toJSON(2));
-console.log('Manifest created successfully!');
+const json = builder.toJSON(2);
+fs.writeFileSync("manifest.json", json);
 ```
 
-## TypeScript
+LICENSE
 
-This package ships with TypeScript type definitions. All methods are fully typed:
+MIT. See the LICENSE file for details.
 
-```typescript
-import { ManifestBuilder } from 'chrome-manifest-builder';
+ABOUT
 
-const builder = new ManifestBuilder()
-  .name('My Extension')      // string
-  .version('1.0.0')           // string
-  .permissions('storage');   // autocomplete for valid permissions
-```
+chrome-manifest-builder is maintained by theluckystrike and built at zovo.one, a Chrome extension studio.
 
-## License
-
-MIT License — see the [LICENSE](LICENSE) file for details.
-
----
-
-Built by [Zovo](https://zovo.one)
+https://github.com/theluckystrike/chrome-manifest-builder
